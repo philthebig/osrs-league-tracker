@@ -3,8 +3,8 @@ import { Search, Filter, Info } from 'lucide-react';
 import { Task } from '../types/tasks';
 import { initialTasks, categories } from '../data/tasks';
 import TaskForm from './TaskForm';
-import { TASKS_VERSION } from '../data/tasks';
 import DarkModeToggle from './DarkModeToggle';
+import { TASKS_VERSION } from '../data/tasks';
 
 interface Stats {
   totalPoints: number;
@@ -14,31 +14,40 @@ interface Stats {
 }
 
 const TaskTracker: React.FC = () => {
+  // Dark mode state
   const [darkMode, setDarkMode] = useState(() => {
     const savedMode = localStorage.getItem('darkMode');
     return savedMode ? JSON.parse(savedMode) : false;
   });
+
+  // Task states
   const [tasks, setTasks] = useState<Task[]>(() => {
     const savedTasks = localStorage.getItem('leagueTasks');
     const savedVersion = localStorage.getItem('tasksVersion');
+    console.log('Current saved version:', savedVersion); // For debugging
+    console.log('New version:', TASKS_VERSION); // For debugging
     
-    // If there's no saved data or the version is different, use initial tasks
+    // Clear everything if version is different
     if (!savedTasks || savedVersion !== TASKS_VERSION) {
+      console.log('Updating to new version'); // For debugging
+      localStorage.clear(); // Clear all storage
       localStorage.setItem('tasksVersion', TASKS_VERSION);
       localStorage.setItem('leagueTasks', JSON.stringify(initialTasks));
       return initialTasks;
     }
-    
     return JSON.parse(savedTasks);
   });
-  const [showAllInfo, setShowAllInfo] = useState<boolean>(false);
+
+  // UI states
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showAllInfo, setShowAllInfo] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<'order' | 'points' | 'category'>('order');
 
+  // Effects
   useEffect(() => {
     localStorage.setItem('leagueTasks', JSON.stringify(tasks));
   }, [tasks]);
@@ -52,8 +61,7 @@ const TaskTracker: React.FC = () => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
   }, [darkMode]);
 
-  const toggleDarkMode = () => setDarkMode(!darkMode);
-
+  // Event handlers
   const handleAddTask = (newTask: Omit<Task, 'id' | 'completed'>) => {
     const nextId = Math.max(...tasks.map(task => task.id), 0) + 1;
     setTasks([...tasks, { ...newTask, id: nextId, completed: false }]);
@@ -81,6 +89,9 @@ const TaskTracker: React.FC = () => {
     );
   };
 
+  const toggleDarkMode = () => setDarkMode(!darkMode);
+
+  // Calculations
   const calculateStats = (): Stats => {
     const completed = tasks.filter(task => task.completed);
     return {
@@ -96,8 +107,6 @@ const TaskTracker: React.FC = () => {
       const matchesSearch = task.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(task.category);
       const matchesRegion = selectedRegions.length === 0 || selectedRegions.includes(task.region);
-       // Add debugging
-  console.log(`Task ${task.id}: Search: ${matchesSearch}, Category: ${matchesCategory}, Region: ${matchesRegion}`);
       return matchesSearch && matchesCategory && matchesRegion;
     })
     .sort((a, b) => {
@@ -115,6 +124,7 @@ const TaskTracker: React.FC = () => {
 
   const stats = calculateStats();
 
+  // Render
   return (
     <div className="max-w-6xl mx-auto p-4">
       <div className="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
@@ -248,6 +258,23 @@ const TaskTracker: React.FC = () => {
                 </div>
                 {(showAllInfo || selectedTask?.id === task.id) && (
                   <div className="mt-2 text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                    {task.beforeSteps && task.beforeSteps.length > 0 && (
+                      <div className="mb-2">
+                        <p className="font-semibold">Before task:</p>
+                        <ul className="list-disc pl-4 space-y-1">
+                          {task.beforeSteps.map((step, index) => (
+                            <li key={index} className={`
+                              ${step.type === 'BANK' ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}
+                              ${step.type === 'WITHDRAW' ? 'text-green-600 dark:text-green-400' : ''}
+                              ${step.type === 'NOTE' ? 'text-gray-500 dark:text-gray-400 italic' : ''}
+                            `}>
+                              {step.description}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     {task.location && (
                       <p><strong>Location:</strong> {task.location}</p>
                     )}
@@ -272,7 +299,23 @@ const TaskTracker: React.FC = () => {
                     {task.notes && (
                       <p><strong>Notes:</strong> {task.notes}</p>
                     )}
-                    <p><strong>Points:</strong> {task.points}</p>
+
+                    {task.afterSteps && task.afterSteps.length > 0 && (
+                      <div className="mt-2">
+                        <p className="font-semibold">After task:</p>
+                        <ul className="list-disc pl-4 space-y-1">
+                          {task.afterSteps.map((step, index) => (
+                            <li key={index} className={`
+                              ${step.type === 'BANK' ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}
+                              ${step.type === 'WITHDRAW' ? 'text-green-600 dark:text-green-400' : ''}
+                              ${step.type === 'NOTE' ? 'text-gray-500 dark:text-gray-400 italic' : ''}
+                            `}>
+                              {step.description}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
